@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -204,6 +204,25 @@ esp_err_t esp_websocket_client_set_headers(esp_websocket_client_handle_t client,
  * @return     esp_err_t
  */
 esp_err_t esp_websocket_client_append_header(esp_websocket_client_handle_t client, const char *key, const char *value);
+
+/**
+ * @brief      Sets a request header, replacing any existing entries for that key.
+ * @pre        Ensure that this function is called before starting the WebSocket client.
+ *
+ *    Unlike `esp_websocket_client_append_header`, this function deduplicates by key:
+ *    if a header with the same key was already set, its value is replaced. This is the
+ *    intended behaviour for headers that should not be repeated on the wire (e.g.
+ *    Authorization), particularly when the same client handle is reused across
+ *    `esp_websocket_client_stop` / `esp_websocket_client_start` cycles with refreshed
+ *    credentials. Key matching is byte-exact.
+ *
+ * @param[in]  client  The WebSocket client handle
+ * @param[in]  key     The header key to set
+ * @param[in]  value   The associated value for the given key
+ *
+ * @return     esp_err_t
+ */
+esp_err_t esp_websocket_client_set_header(esp_websocket_client_handle_t client, const char *key, const char *value);
 
 /**
  * @brief      Open the WebSocket connection

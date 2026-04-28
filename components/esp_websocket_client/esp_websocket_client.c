@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -1061,6 +1061,42 @@ esp_err_t esp_websocket_client_append_header(esp_websocket_client_handle_t clien
     cfg->headers = new_headers;
 
     return ESP_OK;
+}
+
+esp_err_t esp_websocket_client_set_header(esp_websocket_client_handle_t client, const char *key, const char *value)
+{
+    if (client == NULL || key == NULL || value == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    websocket_config_storage_t *cfg = client->config;
+    size_t key_len = strlen(key);
+
+    // Remove every existing line whose key matches exactly, so the append below
+    // replaces rather than duplicates. Match is byte-exact, consistent with
+    // esp_websocket_client_append_header despite header names being formally
+    // case-insensitive. All occurrences are removed (not just the first) so a
+    // caller migrating from append_header (which may have left duplicates in
+    // cfg->headers) converges to a single line per key.
+    if (cfg->headers != NULL) {
+        for (char *p = cfg->headers; *p != '\0';) {
+            char *next_line = strstr(p, "\r\n");
+            if (strncmp(p, key, key_len) == 0 && p[key_len] == ':' && p[key_len + 1] == ' ') {
+                if (next_line == NULL) {
+                    break; // malformed line (no terminator), give up
+                }
+                char *after = next_line + 2;
+                memmove(p, after, strlen(after) + 1);
+                continue; // suffix is now at p; re-check this position for another match
+            }
+            if (next_line == NULL) {
+                break;
+            }
+            p = next_line + 2;
+        }
+    }
+
+    return esp_websocket_client_append_header(client, key, value);
 }
 
 static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
